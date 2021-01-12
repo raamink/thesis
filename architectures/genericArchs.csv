@@ -1,0 +1,28 @@
+###############################################
+## Generic Structure for Architecture files  ##
+###############################################
+#
+#
+# blockName (str), layerID (str), layerInputs (str or [str]), Operations in layer (str), *parameters for operations (depends on ops)
+# 
+# Accepted layer types:
+#  - Conv
+#  - IN
+#  - OUT
+#  - t.b.d.
+# 
+# Convolutional operations. Brackets indicate optional ops.
+# Conv(+BN+ReLU), 
+# Operations:
+#  - Conv (base)
+#  
+# Parameters:
+#  - Stride
+#  - Filter
+#  - Kernel
+#  - Padding
+#  - 
+
+IN, L0, -, -, -
+Conv, L1, L0, Conv+BN+ReLU,  filter, kernel, stride, padding
+Conv, L2, L1, 

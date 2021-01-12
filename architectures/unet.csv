@@ -1,0 +1,33 @@
+#Block,Layers,Imagesize,Operation,Imagesize,Convolutionkernel,Stepsize,Edgefilling
+Conv1, Input, 3×512×512, Conv+BN+ReLU, 3×3×3, 64, 1, 1
+Conv1, L1, 64×512×512, Conv+BN+ReLU, 64×3×3, 64, 1, 1
+Conv1, L2, 64×512×512, MaxPooling, 2×2, –, 2, –
+Conv2, L3, 64×256×256, Conv+BN+ReLU, 64×3×3, 128, 1, 1
+Conv2, L4, 128×256×256, Conv+BN+ReLU, 128×3×3, 128, 1, 1
+Conv2, L5, 128×256×256, MaxPooling, 2×2, –, 2, –
+Conv3, L6, 128×128×128, Conv+BN+ReLU, 128×3×3, 256, 1, 1
+Conv3, L7, 256×128×128, Conv+BN+ReLU, 256×3×3, 256, 1, 1
+Conv3, L8, 256×128×128, MaxPooling, 2×2, –, 2, –
+Conv4, L9, 256×64×64, Conv+BN+ReLU, 256×3×3, 512, 1, 1
+Conv4, L10, 512×64×64, Conv+BN+ReLU, 512×3×3, 512, 1, 1
+Conv4, L11, 512×64×64, MaxPooling, 2×2, –, 2, –
+Conv5, L12, 512×32×32, Conv+BN+ReLU, 512×3×3, 1024, 1, 1
+Conv5, L13, 1024×32×32, Conv+BN+ReLU, 1024×3×3, 1024, 1, 1
+Conv5, L14, 1024×32×32, ConvTrans, 1024×2×2, 512, 2, –
+Concat, L15, 512×64×64, Cat L11
+Conv6, L16, 1024×64×64, Conv+BN+ReLU, 1024×3×3, 512, 1, 1
+Conv6, L17, 512×64×64, Conv+BN+ReLU, 512×3×3, 512, 1, 1
+Conv6, L18, 512×64×64, ConvTrans, 512×2×2, 256, 2, –
+Concat, L19, 256×128×128, Cat L8
+Conv7, L20, 512×128×128, Conv+BN+ReLU, 512×3×3, 256, 1, 1
+Conv7, L21, 256×128×128, Conv+BN+ReLU, 256×3×3, 256, 1, 1
+Conv7, L22, 256×128×128, ConvTrans, 256×2×2, 128, 2, –
+Concat, L23, 128×256×256, Cat L5
+Conv8, L24,256×256×256, Conv+BN+ReLU, 256×3×3, 128, 1, 1
+Conv8, L24, 128×256×256, Conv+BN+ReLU, 128×3×3, 128, 1, 1
+Conv8, L25, 128×256×256, ConvTrans, 128×2×2, 64, 2, –
+Concat, L26, 64×512×512, Cat L2
+Conv9, L27,128×512×512, Conv+BN+ReLU,  128×3×3, 64,  1 , 1
+Conv9, L28, 64×512×512, Conv+BN+ReLU,  64×3×3,  128,  1 , 1
+Conv9, L29, 64×512×512, Conv+Softmax, 64×1×1, 1, 1, 0
+OUT, output, 2×512×512
