@@ -117,23 +117,61 @@ class model(Model):
     
                 
 def buildBlockIterator(lineIterator):
+    """Generates an interator which returns layer blocks"""
     blockName = None
     blockParms = []
-    for lineName, *lineParms in lineIterator:
+    for lineName, lineID, *lineParms in lineIterator:
         if lineName == blockName:
-            blockParms.append(lineParms)
+            blockParms.append([lineID, lineParms])
+        elif blockName == None:
+            blockName, blockParms = lineName, [[lineID, lineParms]]
         else:
             oldBlock = [blockName, blockParms]
-            blockName, blockParms = lineName, [lineParms]
+            blockName, blockParms = lineName, [[lineID, lineParms]]
             yield oldBlock
+    else:
+        yield [lineName, [[lineID, lineParms]]]
 
 
 def buildLineIterator(architectureFile):
+    """Parses the layers and compiles dictionaries for them."""
     with open(architectureFile) as f:
         for line in f:
-            if line[0] == '#':
+            if line == '\n' or line[0] == '#':
                 continue
-            line = line.split(', ')
-            yield line
+            
+            blockName, layerID, layerInput, ops, *parms = line.strip().split(', ')
+            parmsDict = defaultdict()
+            parmsDict['inputTensor'] = layerInput
+            opParms = {}
+            for parm in parms:
+                k,v = parm.split('=')
+                opParms[k] = v
 
+            if blockName == 'Concat':
+                parmsDict = decodeConcat(ops, opParms, parmsDict)
+            elif 'Conv' in blockName:
+                parmsDict = decodeConv(ops, opParms, parmsDict)
+            elif blockName in ['IN', 'OUT']:
+                ops = parmsDict = None
+                if blockName == 'IN':
+                    layerInput = None
+            yield blockName, layerID, layerInput, ops, parmsDict
+            
 
+def decodeConv(ops, opParms, parmsDict):
+    """Labels the different parameters for convolutional blocks"""
+    defaults = {'kernel' : 3, 'stride' : 1, 'filter' : 1, 'padding' : 1}
+    remap = {'k':'kernel', 's':'stride', 'p':'padding', 'f':'filter'}
+
+    parmsDict = {remap[key]:value for (key,value) in opParms.items()}
+    parmsDict['batchNorm'] = True if 'BN' in ops else False
+    parmsDict['leaky'] = True if 'ReLU' in ops else False
+    
+    return ChainMap(parmsDict, defaults)
+
+def decodeConcat(ops, opParms, parmsDict):
+    """Separates the input from the ops"""
+    _, *extraConcats = ops.split(' ')
+    parmsDict['inputTensor'] = [parmsDict['inputTensor']] + extraConcats
+    return parmsDict
