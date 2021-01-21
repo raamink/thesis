@@ -1,9 +1,11 @@
 # blockName (str), layerID (str), layerInputs (str or [str]), Operations in layer (str), *parameters for operations (depends on ops)
 
 # Optionally, have parms define placholder shape
-IN, L0
-Conv1, L1, L0, Conv+BN+ReLU, filter, kernel, stride, padding
-Conv2, L2, L1, Conv+ReLU, filter, kernel
-Conv2, L3, L2, MaxPooling
-Concat, L4, [L3, L0], Concat L0
-OUT, LN, L4
+IN, L0, -, -
+Conv1, L1, L0, Conv+BN+ReLU, f=16, k=5, s=1
+resnet1, L1, L0, Conv+ReLU, f=16, k=1
+resnet1, L2, L1, Conv+ReLU, f=16, k=3
+resnet1, L3, L2, Conv+ReLU, f=3, k=1
+Concat, L4, L3, Concat L1
+maxpool, L5, L4, MaxPooling
+OUT, LN, L4, -
