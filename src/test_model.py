@@ -188,6 +188,38 @@ class testFactories(tf.test.TestCase):
 
         self.assertGreater(len(arch), oldSize)
 
+    def test_outputFactory_buildLayer(self):
+        factory = model.outputFactory()
+
+        layerID, layerParms = ['LN', ['L1', '-', {}]]
+
+        arch = {'L1': tf.constant(np.arange(9).reshape((3,1,3)))}
+
+        expected = tf.constant(np.arange(9).reshape((3,1,3)))
+
+        newlayer = factory.buildLayer(layerParms, arch)
+
+        self.assertAllEqual(expected, newlayer)
+
+    def test_outputFactory_buildBlock(self):
+        factory = model.outputFactory()
+
+        arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3)))}
+        
+        oldSize = len(arch)
+        blockParms = [['LN', ['L0', '-', {}]]]
+
+        factory.buildBlock(blockParms, arch)
+
+        self.assertGreater(len(arch), oldSize)
+
+        arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3))),
+                'L1': tf.constant(np.arange(3).reshape((1,1,3)))}
+
+        blockParms = [['LN', ['L0', '-', {}]]]
+
+
+
 
         
         

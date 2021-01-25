@@ -142,11 +142,13 @@ class inputFactory(layerFactory):
 class outputFactory(layerFactory):
     layerType = 'OUT'
 
-    def buildBlock(self, *args):
-        return self.buildLayer(*args)
+    def buildBlock(self, blockParms: list, architecture: dict) -> None:
+        for layerID, layerParms in blockParms:
+            architecture[layerID] =  self.buildLayer(layerParms, architecture)
     
-    def buildLayer(self, layerParms, architecture):
-        return layerParms['inputTensor']
+    def buildLayer(self, layerParms: list, architecture: dict) -> Callable:
+        inputID, _, _ = layerParms
+        return architecture[inputID]
 
 class concatFactory(layerFactory):
     layerType = 'Concat'
