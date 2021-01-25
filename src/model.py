@@ -25,10 +25,11 @@ class layerFactory:
             layerFactory.layerTypes[self.layerType] = self
 
     def buildLayer(self, layerID, layerParms, architecture):
+        if printBuildInputs: print(f'layerFactory: {layerType} * {layerParms}')
         self.layerTypes[layerID].buildLayer(layerParms, architecture)
         
-    def buildBlock(self, blockType: str, blockParms: list, architecture: dict, link: bool = True):
-        print('layerFactory: ', self.layerTypes[blockType], blockType, blockParms, architecture)
+    def buildBlock(self, blockType: str, blockParms: list, architecture: dict):
+        if printBuildInputs: print('layerFactory: ', self.layerTypes[blockType], blockType, blockParms, architecture)
         self.layerTypes[blockType].buildBlock(blockParms, architecture)
     
 class convFactory(layerFactory):
@@ -147,6 +148,25 @@ class outputFactory(layerFactory):
     def buildLayer(self, layerParms, architecture):
         return layerParms['inputTensor']
 
+class concatFactory(layerFactory):
+    layerType = 'Concat'
+
+    def buildBlock(self, blockParms: list, architecture: dict) -> None:
+        for layerID, layerParms in blockParms:
+            inputTensor = architecture[layerParms[0]]
+            architecture[layerID] = self.buildLayer(layerParms, inputTensor, architecture)
+
+    def buildLayer(self, layerParms: list, inputTensor: tf.Tensor, architecture: dict) -> Callable:
+        _, _, parms = layerParms
+        concats = [inputTensor]
+        extras = parms['concatWith']
+        if extras is list:
+            concats += [architecture[extra] for extra in extras]
+        else:
+            concats.append(architecture[extras])
+        return layers.concatenate(concats)
+
+    
 class myModel(Model):
     # def __init__(self, lossFunction, optimiser, trainLoss, trainMetric, 
             # testLoss, testMetric, architectureFile: str):
@@ -216,24 +236,28 @@ def buildLineIterator(architectureFile):
                 k,v = parm.split('=')
                 opParms[k] = v
 
-            if blockName == 'Concat':
-                ops, parmsDict = decodeConcat(ops, parmsDict)
-            elif 'Conv' in blockName:
-                parmsDict = decodeConv(ops, opParms, parmsDict)
-            elif blockName in ['IN', 'OUT']:
-                parmsDict = decodeIn(ops, opParms, parmsDict)
-            elif 'resnet' in blockName:
-                if 'Conv' in ops:
-                    parmsDict = decodeConv(ops, opParms, parmsDict)
-                elif 'MaxPooling' in ops:
-                    parmsDict = decodeMaxPool(ops, opParms, parmsDict)
-            elif 'maxpool' in blockName:
-                parmsDict = decodeMaxPool(ops, opParms, parmsDict)
-            else:
-                print(blockName, layerID, layerInput, ops, parms)
-                raise ValueError('Block type unknown')
+            decoder = decode(blockName, ops)
+            parmsDict = decoder(ops, opParms, parmsDict)
+
             yield blockName, layerID, layerInput, ops, parmsDict
             
+def decode(blockName, ops):
+    blockName = blockName.rstrip(digits)
+    decoders = {'IN': decodeIn,
+                'OUT': decodeIn,
+                'Conv': decodeConv,
+                'Concat': decodeConcat,
+                'maxpool': decodeMaxPool}
+    
+    if blockName in decoders.keys():
+        return decoders[blockName]
+    elif blockName == 'resnet':
+        firstOp, *_ = ops.split('+')
+        return decoders[firstOp]
+    else:
+        raise ValueError(f'Block type "{blockName}"" not recognised')
+
+
 def decodeIn(ops, opParms, parmsDict):
     defaults = {'shape': (None, None, 3)}
     remap = {'s':'shape'}
@@ -254,12 +278,12 @@ def decodeConv(ops, opParms, parmsDict):
     
     return ChainMap(parmsDict, defaults)
 
-def decodeConcat(ops, parmsDict):
+def decodeConcat(ops, opParms, parmsDict):
     """Separates the input from the ops"""
-    ops, *extraConcats = ops.split(' ')
+    _, *extraConcats = ops.split(' ')
     if extraConcats:
         parmsDict['concatWith'] = extraConcats
-        return ops, parmsDict
+        return parmsDict
     else:
         raise ValueError('Concatenates with nothing')
 

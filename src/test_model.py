@@ -8,42 +8,45 @@ from collections import ChainMap
 
 # Foreign imports
 import tensorflow as tf
+import tensorflow.keras.layers as layers
+import numpy as np
 
 #Local imports
 import model
 model.printInstantiation = False
-model.printBuildInputs = True
+model.printBuildInputs = False
 
 class testMyModel(TestCase):
 
     def test_modelInits(self):
         empty = model.myModel()
         self.assertEqual(dict(), empty.architecture)
+
+    def test_collectBuilders(self):
+        empty = model.myModel()
+        self.assertIsNotNone(empty.builders.layerTypes, msg='Failed to collect any builders')
     
     # def test_modelMakesArchitecture(self):
     #     testArch = model.myModel('architectures/testArch.csv')
     #     self.assertNotEqual(self, dict(), testArch.architecture)
 
-    def test_collectBuilders(self):
-        empty = model.myModel()
-        self.assertIsNotNone(empty.builders.layerTypes)
-        print(empty.builders.layerTypes)
-    
+
+class testDecoders(TestCase):
+    def test_decode(self):
+        blockName = 'Concat'
+        ops = 'Conv+ReLU'
+        self.assertEqual(model.decodeConcat, model.decode(blockName, ops))
+
+        blockName = 'maxpool'
+        self.assertEqual(model.decodeMaxPool, model.decode(blockName, ops))
+
+        blockName = 'resnet1'
+        self.assertEqual(model.decodeConv, model.decode(blockName, ops))
+
+        blockName = 'Spam'
+        self.assertRaises(ValueError, model.decode, blockName, ops)
+
     def test_decodIn(self):
-        # 3 cases for decodeIn
-        readData = 'IN, L0, -, -\nIN, L0, -, -, s=(52,)\nIN, L0\n'
-        with mock.patch('model.open', mock.mock_open(read_data=readData)):
-            line = model.buildLineIterator('spam')
-
-            expected = ('IN', 'L0', '-', '-', ChainMap({}, {'shape': (None, None, 3)}))
-            self.assertEqual(expected, next(line))
-        
-            expected = ('IN', 'L0', '-', '-', ChainMap({'shape': (52,)}, {'shape': (None, None, 3)}))
-            self.assertEqual(expected, next(line))
-        
-            with self.assertRaises(ValueError):
-                next(line)
-
         ops = '-'
 
         opParms = {}
@@ -57,7 +60,6 @@ class testMyModel(TestCase):
         opParms = {'bla':'bla'}
         expected = {'shape': (None, None, 3)}
         self.assertEqual(expected, model.decodeIn(ops, opParms, {}))
-
 
     def test_decodeConv(self):
         # 3 cases for decodeConv
@@ -79,18 +81,19 @@ class testMyModel(TestCase):
     def test_decodeConcat(self):
         # Expected usecase
         parmsDict = {}
+        opParms = {}
 
         ops = 'Concat L0'
-        expected = ('Concat', {'concatWith': ['L0']})
-        self.assertEqual(expected, model.decodeConcat(ops, parmsDict))
+        expected = {'concatWith': ['L0']}
+        self.assertEqual(expected, model.decodeConcat(ops, opParms, parmsDict))
 
         ops = 'Concat L0 L2'
-        expected = ('Concat', {'concatWith': ['L0', 'L2']})
-        self.assertEqual(expected, model.decodeConcat(ops, parmsDict))
+        expected = {'concatWith': ['L0', 'L2']}
+        self.assertEqual(expected, model.decodeConcat(ops, opParms, parmsDict))
 
         # Expected mistake
         ops = 'Concat'
-        self.assertRaises(ValueError, model.decodeConcat, ops, parmsDict)
+        self.assertRaises(ValueError, model.decodeConcat, ops, opParms, parmsDict)
 
     def test_decodeMaxPool(self):
         ops = "MaxPooling"
@@ -112,6 +115,7 @@ class testMyModel(TestCase):
         parmsDict = model.decodeMaxPool(ops, opParms, parmsDict)
         self.assertRaises(KeyError, lambda x: parmsDict[x], 'random')
 
+class testFactories(tf.test.TestCase):
     def test_inputFactory(self):
         factory = model.inputFactory()
         arch = {}
@@ -133,6 +137,7 @@ class testMyModel(TestCase):
         factory.buildBlock(blockParms, arch)
         self.assertNotEqual({'L0': tf.keras.layers.Input(shape=(None, None, 3))}, arch)
         self.assertIsNotNone(arch['L1'])
+
     
     def test_resnetFactory(self):
         factory = model.resnetFactory()
@@ -151,6 +156,42 @@ class testMyModel(TestCase):
         self.assertNotEqual(arch, arch2)
         self.assertEqual(len(arch), 4)
 
+    def test_concatFactory_buildLayer(self):
+        factory = model.concatFactory()
+        
+        input_x = np.arange(9).reshape((3,1,3))
+        expectedOutput = np.concatenate([input_x, input_x], axis=-1)
+        
+        arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3))),
+                'L1': tf.constant(np.arange(9).reshape((3,1,3)))}
+
+        layerID, layerParms = ['L2', ['L1', 'Concat L0', {'concatWith': 'L0'}]]
+        
+        inputTensor = arch['L1']
+
+        newlayer = factory.buildLayer(layerParms, inputTensor, arch)
+
+        self.assertAllEqual(expectedOutput, newlayer)
+        self.assertShapeEqual(expectedOutput, newlayer)
+
+
+    def test_concatFactory_buildBlock(self):
+        factory = model.concatFactory()
+
+        arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3))),
+                'L1': tf.constant(np.arange(9).reshape((3,1,3)))}
+        
+        oldSize = len(arch)
+        blockParms = [['L2', ['L1', 'Concat L0', {'concatWith': 'L0'}]]]
+
+        factory.buildBlock(blockParms, arch)
+
+        self.assertGreater(len(arch), oldSize)
+
+
+        
+        
+        
 
 if __name__ == "__main__":
     unittest.main()
