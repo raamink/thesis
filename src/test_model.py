@@ -138,7 +138,6 @@ class testFactories(tf.test.TestCase):
         self.assertNotEqual({'L0': tf.keras.layers.Input(shape=(None, None, 3))}, arch)
         self.assertIsNotNone(arch['L1'])
 
-    
     def test_resnetFactory(self):
         factory = model.resnetFactory()
         arch = {'L0': tf.keras.layers.Input(shape=(None, None, 3))}
@@ -174,6 +173,25 @@ class testFactories(tf.test.TestCase):
         self.assertAllEqual(expectedOutput, newlayer)
         self.assertShapeEqual(expectedOutput, newlayer)
 
+        layerParms = ['L1', 'Concat L0', {'concatWith': ['L0']}]
+        newlayer = factory.buildLayer(layerParms, inputTensor, arch)
+
+        self.assertAllEqual(expectedOutput, newlayer)
+        self.assertShapeEqual(expectedOutput, newlayer)
+
+
+        arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3))),
+                'L1': tf.constant(np.arange(9).reshape((3,1,3))),
+                'L2': tf.constant(np.arange(9).reshape((3,1,3)))}
+
+        expectedOutput = np.concatenate([input_x, input_x, input_x], axis=-1)
+        layerParms = ['L2', 'Concat L0', {'concatWith': ['L0', 'L1']}]
+        inputTensor = arch['L2']
+
+        newlayer = factory.buildLayer(layerParms, inputTensor, arch)
+
+        self.assertAllEqual(expectedOutput, newlayer)
+        self.assertShapeEqual(expectedOutput, newlayer)
 
     def test_concatFactory_buildBlock(self):
         factory = model.concatFactory()
@@ -218,11 +236,39 @@ class testFactories(tf.test.TestCase):
 
         blockParms = [['LN', ['L0', '-', {}]]]
 
+    @mock.patch('model.outputFactory.buildBlock')
+    @mock.patch('model.concatFactory.buildBlock')
+    @mock.patch('model.resnetFactory.buildBlock')
+    @mock.patch('model.convFactory.buildBlock')
+    @mock.patch('model.inputFactory.buildBlock')
+    def test_genericFactory_buildBlock(self, mock_input, mock_conv, mock_resnet, 
+                mock_concat, mock_output):
+        factory = model.layerFactory()
 
-
-
+        for cls in model.layerFactory.__subclasses__():
+            cls()
         
+        self.assertFalse(mock_input.called)
+        factory.buildBlock('IN', [], {})
+        self.assertTrue(mock_input.called, "`inputFactory.buildBlock` not called with `blockType` 'IN'")
         
+        self.assertFalse(mock_conv.called)
+        factory.buildBlock('Conv',[], {})
+        self.assertTrue(mock_conv.called, "`convFactory.buildblock` not called with `blockType` 'Conv'")
+        
+        self.assertFalse(mock_resnet.called)
+        factory.buildBlock('resnet',[], {})
+        self.assertTrue(mock_resnet.called, "`resnetFactory.buildblock` not called with `blockType` 'resnet'")
+        
+        self.assertFalse(mock_concat.called)
+        factory.buildBlock('Concat', [], {})
+        self.assertTrue(mock_concat.called)
+
+        self.assertFalse(mock_output.called)
+        factory.buildBlock('OUT', [], {})
+        self.assertTrue(mock_output.called)
+
+        self.assertRaises(KeyError, factory.buildBlock,'nonexistentBlockType',[], {})
         
 
 if __name__ == "__main__":

@@ -22,14 +22,16 @@ class layerFactory:
 
     def registerClass(self):
         if self.layerType != layerFactory.layerType:
+            if printInstantiation: print(f'registered a {self.layerType} factory')
             layerFactory.layerTypes[self.layerType] = self
 
     def buildLayer(self, layerID, layerParms, architecture):
-        if printBuildInputs: print(f'layerFactory: {layerType} * {layerParms}')
+        if printBuildInputs: print(f'layerFactory: {layerID} * {layerParms}')
         self.layerTypes[layerID].buildLayer(layerParms, architecture)
         
     def buildBlock(self, blockType: str, blockParms: list, architecture: dict):
-        if printBuildInputs: print('layerFactory: ', self.layerTypes[blockType], blockType, blockParms, architecture)
+        if printBuildInputs: print('layerFactory: ', self.layerTypes[blockType], 
+                blockType, blockParms, architecture)
         self.layerTypes[blockType].buildBlock(blockParms, architecture)
     
 class convFactory(layerFactory):
@@ -154,15 +156,20 @@ class concatFactory(layerFactory):
     layerType = 'Concat'
 
     def buildBlock(self, blockParms: list, architecture: dict) -> None:
+        print('blockParms', blockParms)
         for layerID, layerParms in blockParms:
+            print('layerID', layerID)
+            print('layerParms', layerParms)
             inputTensor = architecture[layerParms[0]]
+            print('type_inputTensor', type(inputTensor))
             architecture[layerID] = self.buildLayer(layerParms, inputTensor, architecture)
 
-    def buildLayer(self, layerParms: list, inputTensor: tf.Tensor, architecture: dict) -> Callable:
+    def buildLayer(self, layerParms: list, inputTensor: tf.Tensor, 
+            architecture: dict) -> Callable:
         _, _, parms = layerParms
         concats = [inputTensor]
         extras = parms['concatWith']
-        if extras is list:
+        if type(extras) is list:
             concats += [architecture[extra] for extra in extras]
         else:
             concats.append(architecture[extras])
