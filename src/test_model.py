@@ -236,13 +236,57 @@ class testFactories(tf.test.TestCase):
 
         blockParms = [['LN', ['L0', '-', {}]]]
 
+    def test_maxpoolFactory_buildLayer(self):
+        factory = model.maxpoolFactory()
+
+        x1 = np.arange(16).reshape((1,4,4,1))
+        y1 = np.array([[[[5],[7]],[[13],[15]]]])
+
+        X1 = tf.constant(x1)
+        arch = {'L1': X1}
+        # layerParms = ['L1', 'MaxPooling', {'pool_size': (2,2), 'strides': None}]
+        layerParms = {'pool_size': (2,2), 'strides': None}
+
+        Y1 = factory.buildLayer(layerParms, X1)
+
+        self.assertIsNotNone(Y1)
+        self.assertAllEqual(y1, Y1)
+
+        y2 = np.arange(16).reshape((4,4))[1:,1:].reshape((1,3,3,1))
+        # layerParms = ['L1', 'MaxPooling', {'pool_size': (2,2), 'strides': (1,1)}]
+        layerParms = {'pool_size': (2,2), 'strides': (1,1)}
+        
+        Y2 = factory.buildLayer(layerParms, x1)
+
+        self.assertAllEqual(y2, Y2)
+
+        y3 = np.arange(16).reshape((4,4))[1::2,1:].reshape((1,2,3,1))
+        # layerParms = ['L1', 'MaxPooling', {'pool_size': (2,2), 'strides': (2,1)}]
+        layerParms = {'pool_size': (2,2), 'strides': (2,1)}
+        
+        Y3 = factory.buildLayer(layerParms, x1)
+
+        self.assertAllEqual(y3, Y3)
+
+    def test_maxPoolFactory_buildBlock(self):
+        factory = model.maxpoolFactory()
+
+        arch = {'L1': tf.constant(np.ones((1,4,4,1)))}
+        blockParms = [['L2', ['L1', 'maxpool', {'pool_size': (2,2), 'strides': None}]]]
+
+        factory.buildBlock(blockParms, arch)
+
+        self.assertIn('L2', arch)
+        self.assertAllEqual(np.ones((1,2,2,1)), arch['L2'])
+
+    @mock.patch('model.maxpoolFactory.buildBlock')
     @mock.patch('model.outputFactory.buildBlock')
     @mock.patch('model.concatFactory.buildBlock')
     @mock.patch('model.resnetFactory.buildBlock')
     @mock.patch('model.convFactory.buildBlock')
     @mock.patch('model.inputFactory.buildBlock')
     def test_genericFactory_buildBlock(self, mock_input, mock_conv, mock_resnet, 
-                mock_concat, mock_output):
+                mock_concat, mock_output, mock_maxpool):
         factory = model.layerFactory()
 
         for cls in model.layerFactory.__subclasses__():
@@ -267,6 +311,10 @@ class testFactories(tf.test.TestCase):
         self.assertFalse(mock_output.called)
         factory.buildBlock('OUT', [], {})
         self.assertTrue(mock_output.called)
+
+        self.assertFalse(mock_maxpool.called)
+        factory.buildBlock('maxpool', [], {})
+        self.assertTrue(mock_maxpool.called)
 
         self.assertRaises(KeyError, factory.buildBlock,'nonexistentBlockType',[], {})
         

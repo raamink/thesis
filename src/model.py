@@ -176,6 +176,18 @@ class concatFactory(layerFactory):
         return layers.concatenate(concats)
 
     
+class maxpoolFactory(layerFactory):
+    layerType = 'maxpool'
+    
+    def buildBlock(self, blockParms: list, architecture: dict) -> None:
+        for layerID, [inputID, op, parms] in blockParms:
+            inputTensor = architecture[inputID]
+            architecture[layerID] = self.buildLayer(parms, inputTensor)
+
+    def buildLayer(self, opParms: dict, inputTensor: tf.Tensor) -> Callable:
+        return layers.MaxPool2D(**opParms)(inputTensor)
+
+
 class myModel(Model):
     # def __init__(self, lossFunction, optimiser, trainLoss, trainMetric, 
             # testLoss, testMetric, architectureFile: str):
