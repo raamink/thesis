@@ -18,13 +18,42 @@ model.printBuildInputs = False
 
 class testMyModel(TestCase):
 
-    def test_modelInits(self):
-        empty = model.myModel()
-        self.assertEqual(dict(), empty.architecture)
+    def setUp(self):
+        self.testModel = model.myModel()
 
-    def test_collectBuilders(self):
-        empty = model.myModel()
-        self.assertIsNotNone(empty.builders.layerTypes, msg='Failed to collect any builders')
+    def test_model_initialises(self):
+        self.assertEqual(dict(), self.testModel.architecture)
+
+    def test_model_collectBuilders(self):
+        self.assertFalse(hasattr(self.testModel, 'builders'))
+
+        self.testModel.collectBuilders()
+
+        self.assertIsNotNone(self.testModel.builders.layerTypes, 
+                             msg='Failed to collect any builders')
+        self.assertEqual(len(self.testModel.builders.layerTypes), 
+                         len(model.layerFactory.__subclasses__()), 
+                         msg='Failed to collect all builers')
+    
+    def test_model_buildArchitecture(self):
+        self.testModel.collectBuilders()
+        self.testModel.buildArchitecture('architectures/testArch.csv')
+
+        self.assertNotEqual(self, dict(), self.testModel.architecture)
+        self.assertIn('L0', self.testModel.architecture)
+        self.assertIn('LN', self.testModel.architecture)
+        self.assertTrue(hasattr(self.testModel, 'model'))
+        self.assertIsInstance(self.testModel.model, tf.keras.Model)
+        self.assertTrue(hasattr(self.testModel.model, 'compile'))
+
+    def test_model_collectCompileParms(self):
+        self.assertTrue(hasattr(self.testModel, 'collectCompileParms'))
+        testFunction = self.testModel.collectCompileParms
+        self.assertRaises(NotImplementedError, testFunction, 'bla')
+        self.assertRaises(FileNotFoundError, testFunction, 'bla.json')
+        testFunction('architectures/testCompileParms.json')
+        self.assertTrue(isinstance(self.testModel.compileParms, dict))
+        self.assertNotEqual(self.testModel.compileParms, {})
     
 
 class testFileIO(TestCase):

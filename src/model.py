@@ -1,7 +1,9 @@
 from string import digits
 from typing import Callable
+import json
 
 import tensorflow as tf
+import tensorflow.keras as keras
 from tensorflow.keras import layers, Model
 from collections import defaultdict, ChainMap
 
@@ -187,14 +189,16 @@ class myModel:
         # self.trainMetric = trainMetric
         # self.testMetric  = testMetric
 
-    def __init__(self, architectureFile: str = None):
+    def __init__(self, architectureFile: str = None, compileFile: str = None) -> None:
         super(myModel, self).__init__()
 
         self.architecture = {}
         if architectureFile:
             self.collectBuilders()
             self.buildArchitecture(architectureFile)
-
+        
+        if compileFile:
+            self.collectCompileParms(compileFile)
 
 
     def buildArchitecture(self, architectureFile: str) -> None:
@@ -216,6 +220,36 @@ class myModel:
         self.builders = layerFactory()
         for subclass in layerFactory.__subclasses__():
             subclass()
+    
+    def collectCompileParms(self, compileFile: str) -> None:
+        """
+        Collects parameters for Keras's model.compile.
+
+        Parameters:
+            `compileFile`: Filename containing parameters. Expects json
+        
+        Returns:
+            `optimizer`: Defaults to RMSProp
+            `loss`: Defaults Sparse Categorical Cross Entropy
+            `Learning Rate`: Defaults to a static 1e-3
+            `metrics`: List of metrics to keep track of. Defaults to Accuracy 
+        """
+        parms = {'optimizer': 'rmsprop', 
+                    'loss': 'sparse_categorical_crossentropy', 
+                    'metrics': ['sparse_categorical_accuracy']}
+
+        if compileFile.split('.')[-1] != 'json':
+            raise NotImplementedError('Filetype required to be .json')
+
+        with open(compileFile) as f:
+            collectedParms = json.load(f)
+        
+        for key in [keys for keys in parms if keys not in collectedParms]:
+            collectedParms[key] = parms[key]
+        
+        self.compileParms = collectedParms
+                
+
                 
 def buildBlockIterator(lineIterator):
     """Generates an interator which returns layer blocks"""
