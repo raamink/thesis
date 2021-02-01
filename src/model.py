@@ -7,6 +7,15 @@ from collections import defaultdict, ChainMap
 
 printInstantiation = True
 printBuildInputs = False
+
+def printB(*args, **kwargs):
+    if printBuildInputs:
+        print(*args, **kwargs)
+
+def printI(*args, **kwargs):
+    if printInstantiation:
+        print(*args, **kwargs)
+
 class layerFactory:
     """General factory for creating layers."""
     # Expand factories with:
@@ -17,20 +26,19 @@ class layerFactory:
 
     def __init__(self, *args, **kwargs):
         self.registerClass()
-        if printInstantiation:
-            print(f'instantiated a {self.layerType} factory')
+        printI(f'instantiated a {self.layerType} factory')
 
     def registerClass(self):
         if self.layerType != layerFactory.layerType:
-            if printInstantiation: print(f'registered a {self.layerType} factory')
+            printI(f'registered a {self.layerType} factory')
             layerFactory.layerTypes[self.layerType] = self
 
     def buildLayer(self, layerID, layerParms, architecture):
-        if printBuildInputs: print(f'layerFactory: {layerID} * {layerParms}')
+        printB(f'layerFactory: {layerID} * {layerParms}')
         self.layerTypes[layerID].buildLayer(layerParms, architecture)
         
     def buildBlock(self, blockType: str, blockParms: list, architecture: dict):
-        if printBuildInputs: print('layerFactory: ', self.layerTypes[blockType], 
+        printB('layerFactory: ', self.layerTypes[blockType], 
                 blockType, blockParms, architecture)
         self.layerTypes[blockType].buildBlock(blockParms, architecture)
     
@@ -38,6 +46,7 @@ class convFactory(layerFactory):
     layerType = 'Conv'
 
     def buildBlock(self, blockParms: list, architecture: dict) -> None:
+        printB(f'> convFactory.buildBlock * {blockParms}')
         for layerName, layerParms in blockParms:
             inputID, _, parmsDict = layerParms
             inputTensor = architecture[inputID]
@@ -45,7 +54,7 @@ class convFactory(layerFactory):
             architecture[layerName] = newlayer
 
     def buildLayer(self, layerParms: dict, inputTensor: tf.Tensor) -> Callable:
-        if printBuildInputs: print(f'> convFactory.buildLayer * layerParms: {layerParms}')
+        printB(f'> convFactory.buildLayer * layerParms: {layerParms}')
         bias = False if layerParms['batchNorm'] else True
         x = layers.Conv2D(filters= layerParms['filter'], kernel_size= layerParms['kernel'],
                 strides= layerParms['stride'], padding=layerParms['padding'], 
@@ -62,7 +71,7 @@ class resnetFactory(layerFactory):
     layerType = 'resnet'
     
     def buildBlock(self, blockParms: list, architecture: dict) -> None:
-        if printBuildInputs: print('resnet.buildBlock * ', blockParms)
+        printB('resnet.buildBlock * ', blockParms)
         firstIn = None
         for layerName, layerParms in blockParms:
             inputID, _, parmsDict = layerParms
@@ -81,7 +90,7 @@ class resnetFactory(layerFactory):
             - The `filter`
             - `inputTensor`, which identifies the inputs.
         """
-        if printBuildInputs: print(f'> convFactory.buildLayer * layerParms: {layerParms}')
+        printB(f'> convFactory.buildLayer * layerParms: {layerParms}')
         # Map dictionary entries to readable variables.
         stride, kernel, filterSize, bnorm, leak, padding = \
                 (layerParms['stride'], layerParms['kernel'], layerParms['filter'], 
@@ -107,36 +116,16 @@ class resnetFactory(layerFactory):
         
         return x
 
-        
-        
-        
-    # def layerBlock(self, *, inputTensor=tf.Tensor, blockParms = None :dict, ):
-    #     x = 
-    #     for count, conv in enumerate(convs):
-    #         if count == (len(convs)-1) and skip:
-    #             skipConnection = x
-    #         if conv['stride'] > 1: x = layers.ZeroPadding2D(((1,0),(1,0)))(x)
-    #         x = layers.Conv2D(conv['filter'], conv['kernel'],strides=conv['stride'],
-    #                 padding='valid' if conv['stride']>1 else 'same',
-    #                 name=f"conv_{conv['layernum']}", 
-    #                 use_bias=False if conv['bnorm'] else True)(x)
-    #         if conv['bnorm']: x = layers.BatchNormalization(epsilon=0.001, 
-    #                     name=f"bnorm_{conv['layernum']}")(x)
-    #         if conv['leaky']: x = layers.LeakyReLU(alpha=0.1,
-    #                     name=f"leaky_{conv['layernum']}")(x)
-    #     return layers.merge.add([skipConnection, x] if skip else x)
-
 class inputFactory(layerFactory):
     layerType = 'IN'
     
     def buildBlock(self, blockParms: list, architecture: dict):
-        # print('inputFactory.buildBlock', '*', blockParms)
+        printB('inputFactory.buildBlock', '*', blockParms)
         for layerID, layerParms in blockParms:
             architecture[layerID] = self.buildLayer(layerParms)
         
     def buildLayer(self, layerParms: list):
-        if printBuildInputs: print(f'> convFactory.buildLayer * layerParms: {layerParms}')
-        # print('inputFactory.buildLayer', layerParms)
+        printB(f'> convFactory.buildLayer * layerParms: {layerParms}')
         _, _, parms = layerParms
         shape = parms['shape']
         return layers.Input(shape=shape)
@@ -156,12 +145,9 @@ class concatFactory(layerFactory):
     layerType = 'Concat'
 
     def buildBlock(self, blockParms: list, architecture: dict) -> None:
-        print('blockParms', blockParms)
+        printB(f'> concatFactory.buildBlock * {blockParms}')
         for layerID, layerParms in blockParms:
-            print('layerID', layerID)
-            print('layerParms', layerParms)
             inputTensor = architecture[layerParms[0]]
-            print('type_inputTensor', type(inputTensor))
             architecture[layerID] = self.buildLayer(layerParms, inputTensor, architecture)
 
     def buildLayer(self, layerParms: list, inputTensor: tf.Tensor, 
@@ -178,7 +164,7 @@ class concatFactory(layerFactory):
     
 class maxpoolFactory(layerFactory):
     layerType = 'maxpool'
-    
+
     def buildBlock(self, blockParms: list, architecture: dict) -> None:
         for layerID, [inputID, op, parms] in blockParms:
             inputTensor = architecture[inputID]
@@ -188,7 +174,7 @@ class maxpoolFactory(layerFactory):
         return layers.MaxPool2D(**opParms)(inputTensor)
 
 
-class myModel(Model):
+class myModel:
     # def __init__(self, lossFunction, optimiser, trainLoss, trainMetric, 
             # testLoss, testMetric, architectureFile: str):
 
@@ -204,22 +190,26 @@ class myModel(Model):
     def __init__(self, architectureFile: str = None):
         super(myModel, self).__init__()
 
-        self.collectBuilders()
-
         self.architecture = {}
         if architectureFile:
+            self.collectBuilders()
             self.buildArchitecture(architectureFile)
 
 
-    def buildArchitecture(self, architectureFile):
+
+    def buildArchitecture(self, architectureFile: str) -> None:
         lines = buildLineIterator(architectureFile)
         blocks = buildBlockIterator(lines)
 
         for blockType, blockList in blocks:
             """There's no reason to shred the block apart at this level. Instead, direct
             blockList to correct blockBuilder, and recover the outputs of those blocks."""
-            print(blockType, blockList)
+            printB(blockType, blockList)
             self.builders.buildBlock(blockType, blockList, self.architecture)
+
+        inputs = self.architecture['L0']
+        outputs = self.architecture['LN']
+        self.model = Model(inputs=inputs, outputs=outputs)
 
     
     def collectBuilders(self):

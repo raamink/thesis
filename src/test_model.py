@@ -26,12 +26,22 @@ class testMyModel(TestCase):
         empty = model.myModel()
         self.assertIsNotNone(empty.builders.layerTypes, msg='Failed to collect any builders')
     
-    # def test_modelMakesArchitecture(self):
-    #     testArch = model.myModel('architectures/testArch.csv')
-    #     self.assertNotEqual(self, dict(), testArch.architecture)
 
+class testFileIO(TestCase):
+    def test_buildLineIterator(self):
+        expectedOutput = [('IN', 'L0', '-', '-', ChainMap({'shape': (None, None, 3)},{})),
+                          ('Conv1', 'L1', 'L0', 'Conv+BN+ReLU', ChainMap({'filter':16, 'kernel':5, 'stride':1, 'leaky':True, 'batchNorm': True},{'padding': 'valid'})),
+                          ('resnet1', 'L1', 'L0', 'Conv+ReLU', ChainMap({'filter':16, 'kernel':1, 'leaky':True, 'batchNorm': False},{'padding': 'valid', 'stride':1})),
+                          ('resnet1', 'L2', 'L1', 'Conv+ReLU', ChainMap({'filter':16, 'kernel':3, 'leaky':True, 'batchNorm': False},{'padding': 'valid', 'stride':1})),
+                          ('resnet1', 'L3', 'L2', 'Conv+ReLU', ChainMap({'filter':3, 'kernel':1, 'leaky':True, 'batchNorm': False},{'padding': 'valid', 'stride':1})),
+                          ('Concat', 'L4', 'L3', 'Concat L1', {'concatWith': ['L1']}),
+                          ('maxpool', 'L5', 'L4', 'MaxPooling', ChainMap({},{'pool_size': (2,2), 'strides': None})),
+                          ('OUT', 'LN', 'L4', '-' , ChainMap({},{'shape': (None, None, 3)}))]
 
-class testDecoders(TestCase):
+        output = list(model.buildLineIterator('architectures/testArch.csv'))
+        self.assertEqual(len(expectedOutput), len(output))
+        self.assertEqual(expectedOutput, output)
+
     def test_decode(self):
         blockName = 'Concat'
         ops = 'Conv+ReLU'
@@ -164,7 +174,7 @@ class testFactories(tf.test.TestCase):
         arch = {'L0': tf.constant(np.arange(9).reshape((3,1,3))),
                 'L1': tf.constant(np.arange(9).reshape((3,1,3)))}
 
-        layerID, layerParms = ['L2', ['L1', 'Concat L0', {'concatWith': 'L0'}]]
+        _, layerParms = ['L2', ['L1', 'Concat L0', {'concatWith': 'L0'}]]
         
         inputTensor = arch['L1']
 
@@ -209,7 +219,7 @@ class testFactories(tf.test.TestCase):
     def test_outputFactory_buildLayer(self):
         factory = model.outputFactory()
 
-        layerID, layerParms = ['LN', ['L1', '-', {}]]
+        _, layerParms = ['LN', ['L1', '-', {}]]
 
         arch = {'L1': tf.constant(np.arange(9).reshape((3,1,3)))}
 
@@ -243,8 +253,6 @@ class testFactories(tf.test.TestCase):
         y1 = np.array([[[[5],[7]],[[13],[15]]]])
 
         X1 = tf.constant(x1)
-        arch = {'L1': X1}
-        # layerParms = ['L1', 'MaxPooling', {'pool_size': (2,2), 'strides': None}]
         layerParms = {'pool_size': (2,2), 'strides': None}
 
         Y1 = factory.buildLayer(layerParms, X1)
