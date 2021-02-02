@@ -54,7 +54,7 @@ class testMyModel(TestCase):
         testFunction('architectures/testCompileParms.json')
         self.assertTrue(isinstance(self.testModel.compileParms, dict))
         self.assertNotEqual(self.testModel.compileParms, {})
-    
+
 
 class testFileIO(TestCase):
     def test_buildLineIterator(self):

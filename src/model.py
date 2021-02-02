@@ -244,8 +244,9 @@ class myModel:
         with open(compileFile) as f:
             collectedParms = json.load(f)
         
-        for key in [keys for keys in parms if keys not in collectedParms]:
-            collectedParms[key] = parms[key]
+        for key in parms:
+            if key not in collectedParms:
+                collectedParms[key] = parms[key]
         
         self.compileParms = collectedParms
                 
