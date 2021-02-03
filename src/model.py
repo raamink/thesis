@@ -177,18 +177,6 @@ class maxpoolFactory(layerFactory):
 
 
 class myModel:
-    # def __init__(self, lossFunction, optimiser, trainLoss, trainMetric, 
-            # testLoss, testMetric, architectureFile: str):
-
-        # self.loss = lossFunction
-        # self.optimiser = optimiser
-
-        # self.trainLoss = trainLoss
-        # self.testLoss  = testLoss
-        
-        # self.trainMetric = trainMetric
-        # self.testMetric  = testMetric
-
     def __init__(self, architectureFile: str = None, compileFile: str = None) -> None:
         super(myModel, self).__init__()
 
@@ -199,6 +187,9 @@ class myModel:
         
         if compileFile:
             self.collectCompileParms(compileFile)
+        
+        if compileFile and architectureFile:
+            self.compileModel()
 
 
     def buildArchitecture(self, architectureFile: str) -> None:
@@ -249,7 +240,14 @@ class myModel:
                 collectedParms[key] = parms[key]
         
         self.compileParms = collectedParms
-                
+
+    def compileModel(self):
+        if not hasattr(self, 'model'):
+            raise ValueError('Missing Model')
+        if not hasattr(self, 'compileParms'):
+            raise KeyError('Missing compileParms')
+        
+        self.model.compile(**self.compileParms)      
 
                 
 def buildBlockIterator(lineIterator):

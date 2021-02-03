@@ -51,9 +51,46 @@ class testMyModel(TestCase):
         testFunction = self.testModel.collectCompileParms
         self.assertRaises(NotImplementedError, testFunction, 'bla')
         self.assertRaises(FileNotFoundError, testFunction, 'bla.json')
-        testFunction('architectures/testCompileParms.json')
+        with mock.patch('model.json.load') as mock_json_load:
+            mock_json_load.return_value = {'optimizer': 'adam'}
+            with mock.patch('model.open', mock.mock_open(read_data='')):
+                testFunction('architectures/testCompileParms.json')
+        expected = {'optimizer': 'adam', 
+                    'loss': 'sparse_categorical_crossentropy', 
+                    'metrics': ['sparse_categorical_accuracy']}
         self.assertTrue(isinstance(self.testModel.compileParms, dict))
-        self.assertNotEqual(self.testModel.compileParms, {})
+        self.assertEqual(self.testModel.compileParms, expected)
+        del self.testModel.compileParms
+
+        with mock.patch('model.json.load') as mock_json_load:
+            mock_json_load.return_value = {'optimizer': 'sgd', 'learn_rate': 1e-5}
+            with mock.patch('model.open', mock.mock_open(read_data='')):
+                testFunction('bla.json')
+        expected = {'optimizer': 'sgd', 
+                    'loss': 'sparse_categorical_crossentropy', 
+                    'metrics': ['sparse_categorical_accuracy'],
+                    'learn_rate': 1e-5}
+        self.assertEqual(self.testModel.compileParms, expected)
+
+    def test_model_compileModel(self):
+        self.assertTrue(hasattr(self.testModel, 'compileModel'))
+        self.assertRaises(ValueError, self.testModel.compileModel)
+        self.testModel.model = tf.keras.models.Sequential([tf.keras.layers.Dense(2)])
+        self.assertRaises(KeyError, self.testModel.compileModel)
+        self.testModel.compileParms = {'optimizer': 'rmsprop', 
+                    'loss': 'sparse_categorical_crossentropy', 
+                    'metrics': ['sparse_categorical_accuracy']}
+        self.assertFalse(self.testModel.model._is_compiled)
+        self.testModel.compileModel()
+        self.assertTrue(self.testModel.model._is_compiled)
+
+    @mock.patch('model.myModel.compileModel')
+    @mock.patch('model.myModel.collectCompileParms')
+    @mock.patch('model.myModel.buildArchitecture')
+    def test_model_compiles(self, mock_arch, mock_parms, mock_compile):
+        self.assertFalse(mock_compile.called)
+        test = model.myModel('bla.csv', 'bla.json')
+        self.assertTrue(mock_compile.called)
 
 
 class testFileIO(TestCase):
