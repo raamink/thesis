@@ -37,7 +37,7 @@ class testMyModel(TestCase):
     
     def test_model_buildArchitecture(self):
         self.testModel.collectBuilders()
-        self.testModel.buildArchitecture('architectures/testArch.csv')
+        self.testModel.buildArchitecture('tests/testArch.csv')
 
         self.assertNotEqual(self, dict(), self.testModel.architecture)
         self.assertIn('L0', self.testModel.architecture)
@@ -54,7 +54,7 @@ class testMyModel(TestCase):
         with mock.patch('model.json.load') as mock_json_load:
             mock_json_load.return_value = {'optimizer': 'adam'}
             with mock.patch('model.open', mock.mock_open(read_data='')):
-                testFunction('architectures/testCompileParms.json')
+                testFunction('tests/testCompileParms.json')
         expected = {'optimizer': 'adam', 
                     'loss': 'sparse_categorical_crossentropy', 
                     'metrics': ['sparse_categorical_accuracy']}
@@ -89,7 +89,7 @@ class testMyModel(TestCase):
     @mock.patch('model.myModel.buildArchitecture')
     def test_model_compiles(self, mock_arch, mock_parms, mock_compile):
         self.assertFalse(mock_compile.called)
-        test = model.myModel('bla.csv', 'bla.json')
+        _ = model.myModel('bla.csv', 'bla.json')
         self.assertTrue(mock_compile.called)
 
 
@@ -104,7 +104,7 @@ class testFileIO(TestCase):
                           ('maxpool', 'L5', 'L4', 'MaxPooling', ChainMap({},{'pool_size': (2,2), 'strides': None})),
                           ('OUT', 'LN', 'L4', '-' , ChainMap({},{'shape': (None, None, 3)}))]
 
-        output = list(model.buildLineIterator('architectures/testArch.csv'))
+        output = list(model.buildLineIterator('tests/testArch.csv'))
         self.assertEqual(len(expectedOutput), len(output))
         self.assertEqual(expectedOutput, output)
 

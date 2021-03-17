@@ -1,5 +1,6 @@
 from string import digits
 from typing import Callable
+from pathlib import Path, PosixPath
 import json
 
 import tensorflow as tf
@@ -179,6 +180,8 @@ class maxpoolFactory(layerFactory):
 class myModel:
     def __init__(self, architectureFile: str = None, compileFile: str = None) -> None:
         super(myModel, self).__init__()
+        self.compiled = False
+        self.files = (architectureFile, compileFile)
 
         self.architecture = {}
         if architectureFile:
@@ -190,7 +193,17 @@ class myModel:
         
         if compileFile and architectureFile:
             self.compileModel()
+            self.compiled = True
 
+    # def __repr__(self):
+    #     if self.compiled:
+    #         return self.model.summary()
+    #     else:
+    #         repString = 'Uncompiled network. Inputs are: \n'
+    #         for f in self.files:
+    #             repString += f'\t- {f}\n' if f is not None
+    #         return repString
+            
 
     def buildArchitecture(self, architectureFile: str) -> None:
         lines = buildLineIterator(architectureFile)
@@ -229,8 +242,16 @@ class myModel:
                     'loss': 'sparse_categorical_crossentropy', 
                     'metrics': ['sparse_categorical_accuracy']}
 
-        if compileFile.split('.')[-1] != 'json':
-            raise NotImplementedError('Filetype required to be .json')
+        if type(compileFile) in [Path, PosixPath]:
+            if compileFile.suffix != '.json':
+                raise NotImplementedError('Filetype required to be .json')
+        elif type(compileFile) is str:
+            if compileFile.split('.')[-1] != 'json':
+                raise NotImplementedError('Filetype required to be .json')
+        else:
+            print(type(compileFile), compileFile)
+            raise NotImplementedError('Requires valid filepath')
+            
 
         with open(compileFile) as f:
             collectedParms = json.load(f)
@@ -238,7 +259,7 @@ class myModel:
         for key in parms:
             if key not in collectedParms:
                 collectedParms[key] = parms[key]
-        
+
         self.compileParms = collectedParms
 
     def compileModel(self):
@@ -335,11 +356,10 @@ def decodeMaxPool(ops, opParms, parmsDict):
     defaults = {'pool_size': (2,2), 'strides': None}
     remap = {'ps':'pool_size', 's':'strides'}
     
-    for parm in opParms:
-        key, val = parm.split('=')
+    for key, value in opParms.items():
         if key not in remap.keys():
             continue
-        val = eval(val)
+        val = eval(value)
         if type(val) == int:
             val = (val, val)
         parmsDict[remap[key]] = val
