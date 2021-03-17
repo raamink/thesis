@@ -1,0 +1,26 @@
+IN, L0, -, -
+Conv1, L1, L0, Conv+BN+ReLU, f=32, k=3, s=3
+maxpool, L2, L1, MaxPooling, s=2, ps=2
+Conv2, L3, L2, Conv+BN+ReLU, f=64, k=3, s=3
+maxpool, L4, L3, MaxPooling, s=2, ps=2
+Conv3, L5, L4, Conv+BN+ReLU, f=128, k=3, s=3
+Conv3, L6, L5, Conv+BN+ReLU, f=64, k=1, s=1
+Conv3, L7, L6, Conv+BN+ReLU, f=128, k=3, s=3
+maxpool, L8, L7, MaxPooling, s=2, ps=2
+Conv4, L9, L8, Conv+BN+ReLU, f=256, k=3, s=3
+Conv4, L10, L9, Conv+BN+ReLU, f=128, k=1, s=1
+Conv4, L11, L10, Conv+BN+ReLU, f=256, k=3, s=3
+maxpool, L12, L11, MaxPooling, s=2, ps=2
+Conv5, L13, L12, Conv+BN+ReLU, f=512, k=3, s=3
+Conv5, L14, L13, Conv+BN+ReLU, f=256, k=1, s=1
+Conv5, L15, L14, Conv+BN+ReLU, f=512, k=3, s=3
+Conv5, L16, L15, Conv+BN+ReLU, f=256, k=1, s=1
+Conv5, L17, L16, Conv+BN+ReLU, f=512, k=3, s=3
+maxpool, L18, L17, MaxPooling, s=2, ps=2
+Conv6, L19, L18, Conv+BN+ReLU, f=1024, k=3, s=3
+Conv6, L20, L19, Conv+BN+ReLU, f=512, k=1, s=1
+Conv6, L21, L20, Conv+BN+ReLU, f=1024, k=3, s=3
+Conv6, L22, L21, Conv+BN+ReLU, f=512, k=1, s=1
+Conv6, L23, L22, Conv+BN+ReLU, f=1024, k=3, s=3
+Conv7, L24, L23, Conv+BN+ReLU, f=1000, k=1, s=1
+OUT, LN, L24, -
