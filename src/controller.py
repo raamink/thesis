@@ -77,7 +77,7 @@ class dataline:
         else:
             self.rootDir = files
         
-        self.labels = ['depth', 'flow', 'masks']
+        self.labels = ['frames', 'depth', 'flow', 'masks']
         self.batchSize = batchSize
         self.sequences = [i for i in self.rootDir.glob('clip*') if i.is_dir()]
         trainval = int(len(self.sequences)*0.7)
@@ -93,7 +93,7 @@ class dataline:
 
 
     def genericBatch(self, sequenceID: str, selectedFrames: list) -> np.array:
-        batchLabels = {'frames': [],
+        batchLabels = {'frames': [], 
                        'depth': [], 
                        'flow': [], 
                        'masks': []}
@@ -109,9 +109,7 @@ class dataline:
     def nextSequentialBatch(self, nframes: int = None):
         sequence = choice(self.sequences)
         nframes = nframes if nframes else self.batchSize
-        batches = self.sequentialBatch(sequence, nframes)
-        for batch in batches:
-            yield batch
+        yield self.sequentialBatch(sequence, nframes)
 
     def sequentialBatch(self, sequenceID: str, nframes: int) -> np.array:
         frameDir = self.rootDir / sequenceID / 'frames'
@@ -120,9 +118,9 @@ class dataline:
 
         while len(frameIDs) >= nframes:
             selFrames, frameIDs = frameIDs[:nframes], frameIDs[nframes:]
-            batchFrames, batchLabels = self.genericBatch(sequenceID, selFrames)
-            yield batchFrames, batchLabels
+            yield self.genericBatch(sequenceID, selFrames)
             
+
     def nextRandomBatch(self, nframes: int = None):
         nextSequence = choice(self.sequences)
         nframes = nframes if nframes else self.batchSize
@@ -147,7 +145,8 @@ class dataline:
             imgDir = self.rootDir / sequenceID / label
             if imgDir.is_dir():
                 labels[label] = self.singleImage(imgDir, imageID)
-        frame = self.singleImage(self.rootDir / sequenceID / 'frames', imageID)
+        # frame = self.singleImage(self.rootDir / sequenceID / 'frames', imageID)
+        frame = None
 
         return frame, labels
 

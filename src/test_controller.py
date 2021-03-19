@@ -77,8 +77,9 @@ class testDataLine(TestCase):
 
 
     def test_returns_selectedLabel(self):
-        expected = (Path('/Data/Thesis/Python/tests/clipTest/frames/'),
-                   {'depth': Path('/Data/Thesis/Python/tests/clipTest/depth/'),
+        expected = (None,
+                   {'frames': Path('/Data/Thesis/Python/tests/clipTest/frames/'),
+                    'depth': Path('/Data/Thesis/Python/tests/clipTest/depth/'),
                     'flow': Path('/Data/Thesis/Python/tests/clipTest/flow/'),
                     'masks': Path('/Data/Thesis/Python/tests/clipTest/masks/')})
         with mock.patch('controller.dataline.singleImage', lambda s, p, i: p):
@@ -90,8 +91,8 @@ class testDataLine(TestCase):
         outputFrames, outputLabels = self.tester.randomBatch('clipTest', nframes=3)
         lensBatch = [len(outputLabels[k]) for k in outputLabels]
         self.assertTrue(isinstance(outputLabels, dict))
-        self.assertEqual([3,3,3], lensBatch)
-        self.assertEqual(3, len(outputFrames))
+        self.assertEqual([3,3,3,3], lensBatch)
+        self.assertEqual(None, outputFrames)
     
     def test_randomBatchIterator(self):
         def counter():
@@ -107,24 +108,28 @@ class testDataLine(TestCase):
         self.assertNotEqual(batch1, batch2)
 
     def test_sequenceConsumption(self):
-        def counter(nframes):
+        def counter(_, __, selFrames):
+            nframes = len(selFrames)
             i = [1,2,3,4,5,6,7,8,9]
-            while len(i) >= nframes:
-                b, i = i[:nframes], i[nframes:]
-                yield b, 0
+            returns = []
+            for frame in selFrames:
+                returns.append(i[frame-1])
+            return returns, {0:[0]}
         
-        with mock.patch('controller.dataline.genericBatch', counter(3)):
-            output = [batch[0] for batch in self.tester.sequentialBatch('clipTest', 3)]
-        expected = [[1,2,3],[4,5,6],[7,8,9]]
+        with mock.patch('controller.dataline.genericBatch', counter):
+            batches = list(self.tester.sequentialBatch('clipTest', 3))
+            output = [batch[0] for batch in batches]
+        expected = [[1,2,3],[4,5,6]]
         
         self.assertEqual(output, expected)
 
     def test_sequentialBatchIterator(self):
         def mockCollectLabels(s, sID, fID):
-            labels = {'depth' : fID,
+            labels = {'frames': fID,
+                      'depth' : fID,
                       'flow' : fID,
                       'masks' : fID}
-            return sID, labels
+            return None, labels
         
         with mock.patch('controller.dataline.collectLabels', mockCollectLabels):
             with mock.patch('controller.listdir', lambda x: [i for i in range(10)]):
@@ -136,9 +141,9 @@ class testDataLine(TestCase):
                 # print('PRINTY2: ', batch1)
                 self.assertRaises(StopIteration, next, batcher)
         
-        expected1 = (['sid']*3, {'depth': [1,2,3], 'flow': [1,2,3], 'masks': [1,2,3]})
-        expected2 = (['sid']*3, {'depth': [4,5,6], 'flow': [4,5,6], 'masks': [4,5,6]})
-        expected3 = (['sid']*3, {'depth': [7,8,9], 'flow': [7,8,9], 'masks': [7,8,9]})
+        expected1 = (None, {'frames': [1,2,3], 'depth': [1,2,3], 'flow': [1,2,3], 'masks': [1,2,3]})
+        expected2 = (None, {'frames': [4,5,6], 'depth': [4,5,6], 'flow': [4,5,6], 'masks': [4,5,6]})
+        expected3 = (None, {'frames': [7,8,9], 'depth': [7,8,9], 'flow': [7,8,9], 'masks': [7,8,9]})
         self.assertEqual([batch1, batch2, batch3], [expected1, expected2, expected3])
 
         with mock.patch('controller.dataline.collectLabels', mockCollectLabels):
