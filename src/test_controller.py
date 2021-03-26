@@ -76,7 +76,7 @@ class testDataLine(TestCase):
 
 
 
-    def test_returns_selectedLabel(self):
+    def test_returns_allLabels(self):
         expected = (None,
                    {'frames': Path('/Data/Thesis/Python/tests/clipTest/frames/'),
                     'depth': Path('/Data/Thesis/Python/tests/clipTest/depth/'),
@@ -88,11 +88,11 @@ class testDataLine(TestCase):
 
 
     def test_returns_randomBatch(self):
-        outputFrames, outputLabels = self.tester.randomBatch('clipTest', nframes=3)
-        lensBatch = [len(outputLabels[k]) for k in outputLabels]
-        self.assertTrue(isinstance(outputLabels, dict))
-        self.assertEqual([3,3,3,3], lensBatch)
-        self.assertEqual(None, outputFrames)
+        inputs, outputs = self.tester.randomBatch('clipTest', nframes=3)
+        self.assertTrue(isinstance(inputs, np.ndarray))
+        self.assertTrue(isinstance(outputs, np.ndarray))
+        self.assertEqual((3, 1080, 1920, 3), inputs.shape)
+        self.assertEqual((3, 1080, 1920), outputs.shape)
     
     def test_randomBatchIterator(self):
         def counter():
@@ -141,11 +141,18 @@ class testDataLine(TestCase):
                 # print('PRINTY2: ', batch1)
                 self.assertRaises(StopIteration, next, batcher)
         
-        expected1 = (None, {'frames': [1,2,3], 'depth': [1,2,3], 'flow': [1,2,3], 'masks': [1,2,3]})
-        expected2 = (None, {'frames': [4,5,6], 'depth': [4,5,6], 'flow': [4,5,6], 'masks': [4,5,6]})
-        expected3 = (None, {'frames': [7,8,9], 'depth': [7,8,9], 'flow': [7,8,9], 'masks': [7,8,9]})
-        self.assertEqual([batch1, batch2, batch3], [expected1, expected2, expected3])
+        self.assertTrue(isinstance(batch1, tuple))
+        self.assertEqual(len(batch1), 2)
 
+        expected1 = (np.array([1,2,3]), np.array([1,2,3]))
+        expected2 = (np.array([4,5,6]), np.array([4,5,6]))
+        expected3 = (np.array([7,8,9]), np.array([7,8,9]))
+
+        for i in range(2):
+            self.assertTrue(np.array_equal(batch1[i], expected1[i]))
+            self.assertTrue(np.array_equal(batch2[i], expected2[i]))
+            self.assertTrue(np.array_equal(batch3[i], expected3[i]))
+        
         with mock.patch('controller.dataline.collectLabels', mockCollectLabels):
             with mock.patch('controller.listdir', lambda x: [i for i in range(10)]):
                 batcher = self.tester.sequentialBatch('sid', 4)

@@ -11,6 +11,7 @@ from os.path import isdir, isfile
 from os import listdir
 from pathlib import Path
 from random import randint, choice
+import array
 
 #extra libs
 from PIL import Image
@@ -18,7 +19,7 @@ import numpy as np
 import tensorflow as tf
 import OpenEXR
 import Imath
-import array
+from skimage.transform import resize
 
 #local imports
 from model import myModel
@@ -68,7 +69,7 @@ class controller:
 
 class dataline:
     def __init__(self, files: str, batchSize: int = 20, batchMode: str = 'random', 
-                 inputLabel='flow', outputLabel='masks'):
+                 inputs=['flow'], outputs=['masks']):
         if not isinstance(files, (str, Path)):
             raise TypeError('Requires filepath')
         
@@ -80,9 +81,8 @@ class dataline:
         self.labels = ['frames', 'depth', 'flow', 'masks']
         self.batchSize = batchSize
         self.sequences = [i for i in self.rootDir.glob('clip*') if i.is_dir()]
-        trainval = int(len(self.sequences)*0.7)
-        self.train = self.sequences[:trainval]
-        self.valid = self.sequences[trainval:]
+        self.inputs = inputs
+        self.outputs = outputs
 
         if batchMode == 'random':
             self.nextBatch = self.nextRandomBatch
@@ -93,6 +93,7 @@ class dataline:
 
 
     def genericBatch(self, sequenceID: str, selectedFrames: list) -> np.array:
+        batchFrames = None
         batchLabels = {'frames': [], 
                        'depth': [], 
                        'flow': [], 
@@ -100,16 +101,20 @@ class dataline:
         
         for frameID in selectedFrames:
             frame, labels = self.collectLabels(sequenceID, frameID)
+            # batchFrames.append(frame)
             for key in labels:
                 batchLabels[key].append(labels[key])
         
-        return batchFrames, batchLabels
+        inputs = np.squeeze(np.stack([batchLabels[key] for key in self.inputs]))
+        outputs = np.squeeze(np.stack([batchLabels[key] for key in self.outputs]))
+
+        return inputs, outputs
 
 
-    def nextSequentialBatch(self, nframes: int = None):
+    def nextSequentialBatch(self, nframes: int = 1):
         sequence = choice(self.sequences)
         nframes = nframes if nframes else self.batchSize
-        yield self.sequentialBatch(sequence, nframes)
+        return self.sequentialBatch(sequence, nframes)
 
     def sequentialBatch(self, sequenceID: str, nframes: int) -> np.array:
         frameDir = self.rootDir / sequenceID / 'frames'
@@ -124,7 +129,7 @@ class dataline:
     def nextRandomBatch(self, nframes: int = None):
         nextSequence = choice(self.sequences)
         nframes = nframes if nframes else self.batchSize
-        yield self.randomBatch(nextSequence, nframes)
+        return self.randomBatch(nextSequence, nframes)
     
     def randomBatch(self, sequenceID: str, nframes: int = 20) -> np.array:
         frameDir = self.rootDir / sequenceID / 'frames'
@@ -138,6 +143,7 @@ class dataline:
 
         selectedFrames = np.arange(startFrame, endFrame)
         return self.genericBatch(sequenceID, selectedFrames)
+
 
     def collectLabels(self, sequenceID: str, imageID: int, dataAug: bool = False) -> list:
         labels = {}
@@ -166,10 +172,17 @@ class dataline:
                     break
         
         if imgPath.suffix == '.exr':
-            return self.loadExr(imgPath, dataAug)
+            loaded = self.loadExr(imgPath, dataAug)
         else:
-            return self.loadImg(imgPath, dataAug)
+            loaded = self.loadImg(imgPath, dataAug)
+        
+        if len(loaded.shape) == 3:
+            newSize = (512, 512, loaded.shape[2])
+        else:
+            newSize = (512, 512, 1)
+        return resize(loaded, newSize)
 
+    
     def loadImg(self, imgPath: Path, dataAug: bool = False) -> np.array:
         rawImg = Image.open(imgPath)
         npImg = np.asarray(rawImg)

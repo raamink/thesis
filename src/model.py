@@ -2,11 +2,11 @@ from string import digits
 from typing import Callable
 from pathlib import Path, PosixPath
 import json
+from collections import defaultdict, ChainMap
 
 import tensorflow as tf
 import tensorflow.keras as keras
 from tensorflow.keras import layers, Model
-from collections import defaultdict, ChainMap
 
 printInstantiation = True
 printBuildInputs = False
@@ -59,9 +59,16 @@ class convFactory(layerFactory):
     def buildLayer(self, layerParms: dict, inputTensor: tf.Tensor) -> Callable:
         printB(f'> convFactory.buildLayer * layerParms: {layerParms}')
         bias = False if layerParms['batchNorm'] else True
-        x = layers.Conv2D(filters= layerParms['filter'], kernel_size= layerParms['kernel'],
+        if layerParms['transposed']:
+            x = layers.Conv2DTranspose(filters=layerParms['filter'], kernel_size=layerParms['kernel'],
+                    strides=layerParms['stride'], padding=layerParms['padding'],
+                    use_bias=bias, data_format='channels_last')(inputTensor)
+        else:
+            x = layers.Conv2D(filters= layerParms['filter'], kernel_size= layerParms['kernel'],
+                    strides= layerParms['stride'], padding=layerParms['padding'], 
                 strides= layerParms['stride'], padding=layerParms['padding'], 
-                use_bias=bias)(inputTensor)
+                    strides= layerParms['stride'], padding=layerParms['padding'], 
+                    use_bias=bias, data_format='channels_last')(inputTensor)
         
         if layerParms['batchNorm']:
             x = layers.BatchNormalization(epsilon=0.1)(x)
@@ -239,8 +246,8 @@ class myModel:
             `metrics`: List of metrics to keep track of. Defaults to Accuracy 
         """
         parms = {'optimizer': 'rmsprop', 
-                    'loss': 'sparse_categorical_crossentropy', 
-                    'metrics': ['sparse_categorical_accuracy']}
+                    'loss': 'categorical_crossentropy', 
+                    'metrics': ['categorical_accuracy']}
 
         if type(compileFile) in [Path, PosixPath]:
             if compileFile.suffix != '.json':
@@ -340,6 +347,7 @@ def decodeConv(ops, opParms, parmsDict):
     parmsDict = {remap[key]: eval(value) for (key,value) in opParms.items() if key in remap.keys()}
     parmsDict['batchNorm'] = True if 'BN' in ops else False
     parmsDict['leaky'] = True if 'ReLU' in ops else False
+    parmsDict['transposed'] = True if 'Trans' in ops else False
     
     return ChainMap(parmsDict, defaults)
 
