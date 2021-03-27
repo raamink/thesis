@@ -66,8 +66,6 @@ class convFactory(layerFactory):
         else:
             x = layers.Conv2D(filters= layerParms['filter'], kernel_size= layerParms['kernel'],
                     strides= layerParms['stride'], padding=layerParms['padding'], 
-                strides= layerParms['stride'], padding=layerParms['padding'], 
-                    strides= layerParms['stride'], padding=layerParms['padding'], 
                     use_bias=bias, data_format='channels_last')(inputTensor)
         
         if layerParms['batchNorm']:
@@ -341,7 +339,7 @@ def decodeIn(ops, opParms, parmsDict):
 
 def decodeConv(ops, opParms, parmsDict):
     """Labels the different parameters for convolutional blocks"""
-    defaults = {'kernel' : 3, 'stride' : 1, 'filter' : 1, 'padding' : 'valid'}
+    defaults = {'kernel' : 3, 'stride' : 1, 'filter' : 1, 'padding' : 'same'}
     remap = {'k':'kernel', 's':'stride', 'p':'padding', 'f':'filter'}
 
     parmsDict = {remap[key]: eval(value) for (key,value) in opParms.items() if key in remap.keys()}
