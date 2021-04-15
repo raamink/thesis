@@ -78,7 +78,8 @@ class dataline:
         else:
             self.rootDir = files
         
-        self.labels = ['frames', 'depth', 'flow', 'masks']
+        # self.labels = ['frames', 'depth', 'flow', 'masks']
+        self.labels = ['flow', 'masks']
         self.batchSize = batchSize
         self.sequences = [i for i in self.rootDir.glob('clip*') if i.is_dir()]
         self.inputs = inputs
@@ -94,9 +95,9 @@ class dataline:
 
     def genericBatch(self, sequenceID: str, selectedFrames: list) -> np.array:
         batchFrames = None
-        batchLabels = {'frames': [], 
-                       'depth': [], 
-                       'flow': [], 
+        batchLabels = {'flow': [], 
+                    #    'frames': [], 
+                    #    'depth': [], 
                        'masks': []}
         
         for frameID in selectedFrames:
@@ -111,10 +112,13 @@ class dataline:
         return inputs, outputs
 
 
-    def nextSequentialBatch(self, nframes: int = 1):
-        sequence = choice(self.sequences)
-        nframes = nframes if nframes else self.batchSize
-        return self.sequentialBatch(sequence, nframes)
+    def nextSequentialBatch(self, nframes: int = 0):
+        while True:
+            sequence = choice(self.sequences)
+            nframes = nframes if nframes else self.batchSize
+            batches =  self.sequentialBatch(sequence, nframes)
+            for batch in batches:
+                yield batch
 
     def sequentialBatch(self, sequenceID: str, nframes: int) -> np.array:
         frameDir = self.rootDir / sequenceID / 'frames'

@@ -3,6 +3,7 @@ from typing import Callable
 from pathlib import Path, PosixPath
 import json
 from collections import defaultdict, ChainMap
+from datetime import datetime
 
 import tensorflow as tf
 import tensorflow.keras as keras
@@ -208,7 +209,14 @@ class myModel:
     #         for f in self.files:
     #             repString += f'\t- {f}\n' if f is not None
     #         return repString
-            
+        
+    def save(self, savesDir: Path = Path('/Data/models/saved/')):
+        folderName = datetime.now().strftime("%Y%m%d-%H%M%S")
+        networkDir = savesDir / folderName
+        if not networkDir.exists:
+            networkDir.mkdir()
+        self.model.save(str(networkDir / 'UNet'))
+
 
     def buildArchitecture(self, architectureFile: str) -> None:
         lines = buildLineIterator(architectureFile)
