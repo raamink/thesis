@@ -20,7 +20,7 @@ import cv2
 from PIL import Image as pim
 import os
 
-matplotlib.use('GTK3Cairo')
+
 
 def exr2depth(exr, maxvalue=1.,normalize=True):
     """ converts 1-channel exr-data to 2D numpy arrays """   

@@ -89,8 +89,53 @@ class dataline:
         elif batchMode == 'sequential':
             self.nextBatch = self.nextSequentialBatch
 
-        self.dataset = tf.data.Dataset.from_generator(self.nextBatch, output_types=tf.int32)
 
+        self.dataset = self.generateTFDataset(batchSize)
+
+        
+    def generateTFDataset(self, batchSize):
+        dataset = tf.data.Dataset.from_generator(
+            self.datasetGenerator_allClipsTogether,
+            output_types=(tf.float32, tf.int16)
+        )
+
+        dataset = dataset.repeat()
+        dataset = dataset.batch(batchSize)
+        dataset = dataset.prefetch(tf.data.AUTOTUNE)
+
+        return dataset
+
+    
+    def datasetGenerator_allClipsTogether(self):
+        for sequenceID in self.sequences:
+            frameDir = self.rootDir / sequenceID / 'frames'
+            clipLength = len(listdir(frameDir))
+            frameIDs = [i+1 for i in range(clipLength)]
+            
+            for element in frameIDs:
+                inputs = self.selectLabel(sequenceID, self.inputs, element)
+                outputs = self.selectLabel(sequenceID, self.outputs, element)
+                yield inputs, outputs
+
+        # self.dataset = tf.keras.preprocessing.timeseries_dataset_from_array(self.nextBatch)
+    
+    def selectLabel(self, seqID, labels, frameID):
+        types = []
+        for label in labels:
+            imgDir = self.rootDir / seqID / label
+            types.append(self.singleImage(imgDir, frameID))
+        
+        if len(labels) > 1:
+            types =np.stack(types)
+        else:
+            types = np.asarray(types)
+        
+        types = np.squeeze(types)
+
+        if len(types.shape) == 2:
+            types = np.expand_dims(types, -1)
+
+        return types
 
     def genericBatch(self, sequenceID: str, selectedFrames: list) -> np.array:
         batchFrames = None
@@ -112,19 +157,18 @@ class dataline:
 
 
     def nextSequentialBatch(self, nframes: int = 1):
-        sequence = choice(self.sequences)
         nframes = nframes if nframes else self.batchSize
-        return self.sequentialBatch(sequence, nframes)
+        for sequenceID in self.sequences:
 
-    def sequentialBatch(self, sequenceID: str, nframes: int) -> np.array:
-        frameDir = self.rootDir / sequenceID / 'frames'
-        numFrames = len(listdir(frameDir))
-        frameIDs = [i+1 for i in range(numFrames)]
+            frameDir = self.rootDir / sequenceID / 'frames'
+            clipLength = len(listdir(frameDir))
+            frameIDs = [i+1 for i in range(clipLength)]
 
-        while len(frameIDs) >= nframes:
-            selFrames, frameIDs = frameIDs[:nframes], frameIDs[nframes:]
-            yield self.genericBatch(sequenceID, selFrames)
-            
+            batches = [frameIDs[i:i+nframes] for i in range(0, len(frameIDs), nframes)]
+            for batch in batches:
+                yield self.genericBatch(sequenceID, batch)
+
+            # yield self.sequentialBatch(sequence, nframes)
 
     def nextRandomBatch(self, nframes: int = None):
         nextSequence = choice(self.sequences)

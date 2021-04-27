@@ -275,6 +275,9 @@ class myModel:
         
         self.model.compile(**self.compileParms)      
 
+    def save(self, saveDir):
+        self.model.save(saveDir)
+
                 
 def buildBlockIterator(lineIterator):
     """Generates an interator which returns layer blocks"""
