@@ -1,10 +1,14 @@
 from controller import controller, dataline
-import tensorflow as tf
-from datetime import datetime
-from pathlib import Path
-
 
 if __name__ == "__main__":
+    import tensorflow as tf
+    
+    from datetime import datetime
+    from pathlib import Path
+    import os
+    
+    os.environ['CUDA_VISIBLE_DEVICES'] = ''
+
     rootDir = Path('/Data')
     archFiles = str(rootDir / 'models/new')
     logDir = rootDir / 'logs'

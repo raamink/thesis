@@ -68,7 +68,7 @@ class controller:
 
 
 class dataline:
-    def __init__(self, files: str, batchSize: int = 20, batchMode: str = 'random', 
+    def __init__(self, files: str, batchSize: int = 4, batchMode: str = 'random', 
                  inputs=['flow'], outputs=['masks']):
         if not isinstance(files, (str, Path)):
             raise TypeError('Requires filepath')
@@ -83,12 +83,6 @@ class dataline:
         self.sequences = [i for i in self.rootDir.glob('clip*') if i.is_dir()]
         self.inputs = inputs
         self.outputs = outputs
-
-        if batchMode == 'random':
-            self.nextBatch = self.nextRandomBatch
-        elif batchMode == 'sequential':
-            self.nextBatch = self.nextSequentialBatch
-
 
         self.dataset = self.generateTFDataset(batchSize)
 
@@ -253,7 +247,7 @@ class dataline:
         FLOAT = Imath.PixelType(Imath.PixelType.FLOAT)
         (R,G,B) = [array.array('f', exrFile.channel(Chan, FLOAT)).tolist() for Chan in ("R", "G", "B") ]
 
-        img = np.zeros((h,w,3), np.float64)
+        img = np.zeros((h,w,2), np.float64)
         img[:,:,0] = np.array(R).reshape(img.shape[0],-1)
         img[:,:,1] = -np.array(G).reshape(img.shape[0],-1)
         

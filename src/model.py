@@ -72,6 +72,9 @@ class convFactory(layerFactory):
             x = layers.BatchNormalization(epsilon=0.1)(x)
         if layerParms['leaky']:
             x = layers.LeakyReLU(alpha=0.1)(x)
+        elif layerParms['Softmax']:
+            x = layers.Softmax()(x)
+        
         
         return x
 
@@ -349,6 +352,7 @@ def decodeConv(ops, opParms, parmsDict):
     parmsDict['batchNorm'] = True if 'BN' in ops else False
     parmsDict['leaky'] = True if 'ReLU' in ops else False
     parmsDict['transposed'] = True if 'Trans' in ops else False
+    parmsDict['Softmax'] = True if 'Softmax' in ops else False
     
     return ChainMap(parmsDict, defaults)
 
