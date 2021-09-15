@@ -222,8 +222,14 @@ class dataline:
 
     
     def loadImg(self, imgPath: Path, dataAug: bool = False) -> np.array:
-        rawImg = Image.open(imgPath)
-        npImg = np.asarray(rawImg)
+        rawImg = Image.open(imgPath).resize((512,512))
+        mode = rawImg.mode
+        if mode == 'L':
+            npImg = np.asarray(rawImg.convert('1'))
+        elif mode == 'RGBA':
+            npImg = np.asarray(rawImg.convert('RGB'))
+        else:
+            npImg = np.asarray(rawImg)
         return npImg
 
     def loadExr(self, imgPath: Path, dataAug: bool = False) -> np.array:
@@ -250,6 +256,7 @@ class dataline:
         img = np.zeros((h,w,2), np.float64)
         img[:,:,0] = np.array(R).reshape(img.shape[0],-1)
         img[:,:,1] = -np.array(G).reshape(img.shape[0],-1)
+        img[np.abs(img)>200] = 0
         
         return img
 

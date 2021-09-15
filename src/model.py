@@ -81,17 +81,28 @@ class convFactory(layerFactory):
 class resnetFactory(layerFactory):
     layerType = 'resnet'
     
-    def buildBlock(self, blockParms: list, architecture: dict) -> None:
-        printB('resnet.buildBlock * ', blockParms)
-        firstIn = None
-        for layerName, layerParms in blockParms:
-            inputID, _, parmsDict = layerParms
-            inputTensor = architecture[inputID]
-            if firstIn == None:
-                firstIn = inputTensor
-            newlayer = self.buildLayer(parmsDict, inputTensor)
-            architecture[layerName] = newlayer
-        architecture[layerName] = newlayer + firstIn
+    def buildBlock(self, block: list, architecture: dict) -> None:
+        printB('resnet.buildBlock * ', block)
+        if len(block) == 1:
+            block = block[0]
+        else:
+            block = block
+        outputID, blockParms = block
+        blockStart, _, blockDict = blockParms
+        firstLayer = int(blockStart[1:])
+        layerCount = blockDict['blocks'] * 2 + 1
+        layer = architecture[blockStart]
+        for blockLayer in range(layerCount):
+            layerParms = {'batchNorm':blockDict['batchNorm'], 'leaky':blockDict['leaky']}
+            if blockLayer&1: # even layers (2nd, but in pythonic 1st)
+                layerParms.update({'stride':1, 'kernel':1, 'filter':blockDict['f2']})
+            else:            # Odd layers (0th, 2nd, etc)
+                layerParms.update({'stride':1, 'kernel':1, 'filter':blockDict['f1']})
+            layer = self.buildLayer(layerParms, layer)
+            layerID = f'L{blockLayer + firstLayer}'
+            architecture[layerID] = layer
+        outlayer = layer + architecture[blockStart]
+        architecture[outputID] = outlayer
     
     def buildLayer(self, layerParms: dict, inputTensor: tf.Tensor) -> Callable:
         """
@@ -105,7 +116,7 @@ class resnetFactory(layerFactory):
         # Map dictionary entries to readable variables.
         stride, kernel, filterSize, bnorm, leak, padding = \
                 (layerParms['stride'], layerParms['kernel'], layerParms['filter'], 
-                layerParms['batchNorm'], layerParms['leaky'], layerParms['padding'])
+                layerParms['batchNorm'], layerParms['leaky'], None)
 
         # derived names
         if stride > 1:
@@ -248,7 +259,7 @@ class myModel:
         """
         parms = {'optimizer': 'rmsprop', 
                     'loss': 'categorical_crossentropy', 
-                    'metrics': ['categorical_accuracy']}
+                    'metrics': ['mean_squared_error', 'categorical_accuracy', keras.metrics.MeanIoU(num_classes=2)]}
 
         if type(compileFile) in [Path, PosixPath]:
             if compileFile.suffix != '.json':
@@ -323,7 +334,8 @@ def decode(blockName, ops):
                 'OUT': decodeIn,
                 'Conv': decodeConv,
                 'Concat': decodeConcat,
-                'maxpool': decodeMaxPool}
+                'maxpool': decodeMaxPool,
+                'resnet': decodeResNet}
     
     if blockName in decoders.keys():
         return decoders[blockName]
@@ -333,6 +345,15 @@ def decode(blockName, ops):
     else:
         raise ValueError(f'Block type "{blockName}"" not recognised')
 
+def decodeResNet(ops, opParms, parmsDict):
+    defaults = {'f1':64, 'f2':32, 'blocks':1}
+    remap = {'k':'kernel', 's':'stride', 'p':'padding', 'f1':'f1', 'f2':'f2', 'blocks':'blocks'}
+    parmsDict = {remap[key]: eval(value) for (key,value) in opParms.items() if key in remap.keys()}
+
+    parmsDict['batchNorm'] = True if 'BN' in ops else False
+    parmsDict['leaky'] = True if 'ReLU' in ops else False
+
+    return ChainMap(parmsDict, defaults)
 
 def decodeIn(ops, opParms, parmsDict):
     defaults = {'shape': (None, None, 3)}
