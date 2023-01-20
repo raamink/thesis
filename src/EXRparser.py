@@ -82,43 +82,43 @@ if __name__ == "__main__":
 
     from pathlib import Path
 
-    filePath = Path("/Data/dataset_new/clip3/flow/flow0701.exr")
-    exr2flow(filePath)
+    # filePath = Path("/Data/dataset_new/clip3/flow/flow0701.exr")
+    # exr2flow(filePath)
 
     from PIL import Image
-    mask = np.array(Image.open("/Data/dataset_new/clip3/masks/mask0701.png"))
-    depth_data = exr2depth("/Data/dataset_new/clip3/depth/depth0701.exr", maxvalue=40, normalize=False)
-    flow_data  = exr2flow("/Data/dataset_new/clip3/flow/flow0701.exr", 1920, 1080)
+    # mask = np.array(Image.open("/Data/dataset-OrigFiles/clip3/masks/mask0004.png"))
+    # depth_data = exr2depth("/Data/dataset-OrigFiles/clip3/depth/depth0004.exr", maxvalue=40, normalize=False)
+    flow_data  = exr2flow("/Data/unsortedDataset/clip9/flow/flow0030.exr", 1280,720)#, 1920, 1080)
 
-    flowImg = flow_data[0]
-    interestingFlowPoints = flowImg[mask > 0]
+    # flowImg = flow_data[0]
+    # interestingFlowPoints = flowImg[mask > 0]
 
-    vector = np.zeros(flowImg.shape)
-    for i in range(3):
-        vector[:,:,i] = depth_data * flowImg[:,:,i]
+    # vector = np.zeros(flowImg.shape)
+    # for i in range(3):
+    #     vector[:,:,i] = depth_data * flowImg[:,:,i]
 
-    vectors = [np.average(vector[mask > 0])]
-
-
+    # vectors = [np.average(vector[mask > 0])]
 
 
-    print([np.max(flow_data[i]) for i in range(4)])
-    print([flow_data[i].shape for i in range(4)])
+
+
+    # print([np.max(flow_data[i]) for i in range(4)])
+    # print([flow_data[i].shape for i in range(4)])
 
 
     fig = plt.figure()
     # plt.imshow(depth_data)
     plt.subplot(231)
-    plt.imshow(flow_data[0])
+    plt.imshow(flow_data[0][...,0])
     plt.subplot(232)
-    plt.imshow(flow_data[1])
+    plt.imshow(flow_data[0][...,1])
     plt.subplot(233)
     plt.imshow(flow_data[2])
     plt.subplot(234)
     plt.imshow(flow_data[3])
 
-    # plt.colorbar()
-    # plt.show()
+    plt.colorbar()
+    plt.show()
 
     # plt.savefig("/Data/dataset/depth/depth0100.jpg")
     # plt.savefig("/Data/dataset/flow/flow0544.jpg")

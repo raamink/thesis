@@ -97,7 +97,7 @@ class resnetFactory(layerFactory):
             if blockLayer&1: # even layers (2nd, but in pythonic 1st)
                 layerParms.update({'stride':1, 'kernel':1, 'filter':blockDict['f2']})
             else:            # Odd layers (0th, 2nd, etc)
-                layerParms.update({'stride':1, 'kernel':1, 'filter':blockDict['f1']})
+                layerParms.update({'stride':3, 'kernel':3, 'filter':blockDict['f1']})
             layer = self.buildLayer(layerParms, layer)
             layerID = f'L{blockLayer + firstLayer}'
             architecture[layerID] = layer
@@ -258,8 +258,12 @@ class myModel:
             `metrics`: List of metrics to keep track of. Defaults to Accuracy 
         """
         parms = {'optimizer': 'rmsprop', 
-                    'loss': 'categorical_crossentropy', 
-                    'metrics': ['mean_squared_error', 'categorical_accuracy', keras.metrics.MeanIoU(num_classes=2)]}
+                    # 'loss': 'categorical_crossentropy', 
+                    # 'loss': keras.losses.BinaryCrossentropy(from_logits=True),
+                    'loss': keras.losses.BinaryCrossentropy(from_logits=False),
+                    # 'loss' : keras.losses.MeanSquaredError(),
+                    # 'loss' : keras.losses.CategoricalCrossentropy(),
+                    'metrics': ['accuracy', 'mean_squared_error', 'categorical_accuracy', keras.metrics.MeanIoU(num_classes=2)]}
 
         if type(compileFile) in [Path, PosixPath]:
             if compileFile.suffix != '.json':
